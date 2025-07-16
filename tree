@@ -1,0 +1,39 @@
+#!/bin/sh
+
+set -e
+
+branch="$1"
+if [ -z "$branch" ]; then
+  echo "Usage: tree <branch-name>"
+  exit 1
+fi
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "Not inside a git repository."
+  exit 1
+}
+
+repo_name=$(basename "$repo_root")
+worktree_path="$repo_root/../${repo_name}-worktrees/$branch"
+
+if ! git show-ref --quiet "refs/heads/$branch"; then
+  echo "Branch '$branch' doesn't exist. Creating from HEAD..."
+  git branch "$branch"
+fi
+
+echo "Creating worktree at $worktree_path..."
+git worktree add "$worktree_path" "$branch"
+
+if [ -f "$repo_root/.env.local" ]; then
+  echo "Copying .env.local to worktree..."
+  cp "$repo_root/.env.local" "$worktree_path/"
+fi
+
+if [ -d "$repo_root/.claude" ]; then
+  echo "Copying .claude/ to worktree..."
+  cp -R "$repo_root/.claude" "$worktree_path/"
+fi
+
+cd "$worktree_path"
+exec "${SHELL:-/bin/sh}"
+

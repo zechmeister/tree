@@ -24,14 +24,17 @@ fi
 echo "Creating worktree at $worktree_path..."
 git worktree add "$worktree_path" "$branch"
 
-if [ -f "$repo_root/.env.local" ]; then
-  echo "Copying .env.local to worktree..."
-  cp "$repo_root/.env.local" "$worktree_path/"
-fi
-
-if [ -d "$repo_root/.claude" ]; then
-  echo "Copying .claude/ to worktree..."
-  cp -R "$repo_root/.claude" "$worktree_path/"
+if [ -f "$repo_root/.worktreeinclude" ]; then
+  while IFS= read -r path || [ -n "$path" ]; do
+    case "$path" in
+      ''|\#*) continue ;;
+    esac
+    if [ -e "$repo_root/$path" ]; then
+      echo "Copying $path to worktree..."
+      mkdir -p "$worktree_path/$(dirname "$path")"
+      cp -R "$repo_root/$path" "$worktree_path/$path"
+    fi
+  done < "$repo_root/.worktreeinclude"
 fi
 
 cd "$worktree_path"

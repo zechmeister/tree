@@ -29,10 +29,18 @@ if [ -f "$repo_root/.worktreeinclude" ]; then
     case "$path" in
       ''|\#*) continue ;;
     esac
-    if [ -e "$repo_root/$path" ]; then
+    path=${path%/}
+    path=${path%/\*\*}
+    path=${path%/\*}
+    src="$repo_root/$path"
+    if [ -d "$src" ]; then
+      echo "Copying $path/ to worktree..."
+      mkdir -p "$worktree_path/$path"
+      cp -R "$src/." "$worktree_path/$path/"
+    elif [ -e "$src" ]; then
       echo "Copying $path to worktree..."
       mkdir -p "$worktree_path/$(dirname "$path")"
-      cp -R "$repo_root/$path" "$worktree_path/$path"
+      cp -R "$src" "$worktree_path/$path"
     fi
   done < "$repo_root/.worktreeinclude"
 fi

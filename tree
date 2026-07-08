@@ -2,9 +2,9 @@
 
 set -e
 
-branch="$1"
-if [ -z "$branch" ]; then
-  echo "Usage: tree <branch-name>"
+arg="$1"
+if [ -z "$arg" ]; then
+  echo "Usage: tree <branch-name | pr-number>"
   exit 1
 fi
 
@@ -14,15 +14,26 @@ repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 
 repo_name=$(basename "$repo_root")
-worktree_path="$repo_root/../${repo_name}-worktrees/$branch"
 
-if ! git show-ref --quiet "refs/heads/$branch"; then
-  echo "Branch '$branch' doesn't exist. Creating from HEAD..."
-  git branch "$branch"
-fi
-
-echo "Creating worktree at $worktree_path..."
-git worktree add "$worktree_path" "$branch"
+case "$arg" in
+  *[!0-9]*)
+    worktree_path="$repo_root/../${repo_name}-worktrees/$arg"
+    if ! git show-ref --quiet "refs/heads/$arg"; then
+      echo "Branch '$arg' doesn't exist. Creating from HEAD..."
+      git branch "$arg"
+    fi
+    echo "Creating worktree at $worktree_path..."
+    git worktree add "$worktree_path" "$arg"
+    ;;
+  *)
+    origin_slug=$(git remote get-url origin | sed -E 's#(git@[^:]+:|https?://[^/]+/)##; s#\.git$##')
+    worktree_path="$repo_root/../${repo_name}-worktrees/pr-$arg"
+    echo "Creating worktree at $worktree_path..."
+    git worktree add --detach "$worktree_path"
+    echo "Checking out PR #$arg from $origin_slug via gh (real branch + push config)..."
+    ( cd "$worktree_path" && gh pr checkout "$arg" --repo "$origin_slug" )
+    ;;
+esac
 
 if [ -f "$repo_root/.worktreeinclude" ]; then
   while IFS= read -r path || [ -n "$path" ]; do
